@@ -1,0 +1,30 @@
+project:
+  type: website
+  output-dir: docs
+  
+
+website:
+  title: "EC226"
+  navbar:
+    left:
+      - href: index.qmd
+        text: Home
+      - text: Lectures
+        menu:
+          - href: week01.qmd
+            text: Week 01
+          
+
+format:
+  html:
+    theme:
+      light: lightly
+      dark: darkly
+    toc: true
+
+  pdf:
+    pdf-engine: xelatex
+
+
+execute:
+  freeze: auto

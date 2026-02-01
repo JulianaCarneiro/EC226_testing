@@ -1,0 +1,504 @@
+---
+title: "Classical Linear Regression Model & Ordinary Least Squares"
+format:
+  html:
+    toc: true
+    toc-depth: 3
+    number-sections: true
+    code-fold: true
+    theme: cosmo
+    css: styles.css
+execute:
+  echo: true
+  warning: false
+  message: false
+---
+
+::: callout-note
+[Download PDF](week01.pdf)
+:::
+
+# Two variable linear regression analysis
+
+## Readings
+
+- Stock and Watson (2003), Chapters 4–5
+- Dougherty (2016), Chapter 2
+- Wooldridge (2013), Chapter 2
+
+# Introduction
+
+Econometrics means economic measurement. Econometricians attempt to quantify
+economic relationships that are of interest to theory and policy.
+
+# Correlation vs Regression
+
+## Correlation
+
+In economics we are interested in the relationship between two or more random
+variables, for example:
+
+- Sales and advertising expenditure
+- Personal consumption and disposable income
+- Investment and interest rates
+- Earnings and schooling
+
+A measure of linear association between two random variables $x$ and $y$
+is the **covariance**, which for a sample of $n$ pairs of observations
+$(x_1, y_1)$, $\ldots$, $(x_n, y_n)$ is calculated as
+
+$$
+\operatorname{cov}(x,y)
+=
+\frac{1}{n-1}
+\sum_{i=1}^{n}
+(x_i - \bar{x})(y_i - \bar{y})
+$$
+
+The covariance is a measure of **linear** association. It may be approximately
+zero even when there is a strong non-linear (e.g. quadratic) relationship.
+
+## Interactive Correlation Explorer
+
+::: {.callout-tip}
+## Explore Correlation Interactively!
+Adjust the sliders below to see how different parameters affect the relationship between variables. This hands-on exploration helps build intuition for regression concepts.
+:::
+
+```{r}
+#| echo: false
+#| message: false
+#| warning: false
+
+library(plotly)
+library(htmltools)
+
+# Create HTML controls and interactive plot
+htmltools::browsable(
+  tagList(
+    tags$div(
+      style = "max-width: 1200px; margin: 0 auto; padding: 20px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 15px; box-shadow: 0 10px 30px rgba(0,0,0,0.2);",
+      
+      tags$div(
+        style = "background: white; padding: 25px; border-radius: 10px; margin-bottom: 20px;",
+        
+        tags$h3(
+          "🎮 Control Panel",
+          style = "margin-top: 0; color: #667eea; font-weight: 700;"
+        ),
+        
+        tags$div(
+          style = "display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px; margin-top: 20px;",
+          
+          # Correlation slider
+          tags$div(
+            tags$label(
+              "📊 Correlation (ρ)",
+              style = "font-weight: 600; color: #333; display: block; margin-bottom: 8px;"
+            ),
+            tags$input(
+              type = "range",
+              id = "correlation",
+              min = "-1",
+              max = "1",
+              step = "0.1",
+              value = "0.7",
+              style = "width: 100%; height: 8px; border-radius: 5px; background: linear-gradient(90deg, #f44336 0%, #ffc107 50%, #4caf50 100%);"
+            ),
+            tags$div(
+              id = "corrValue",
+              "0.7",
+              style = "text-align: center; margin-top: 5px; font-weight: 700; color: #667eea; font-size: 18px;"
+            )
+          ),
+          
+          # Sample size slider
+          tags$div(
+            tags$label(
+              "👥 Sample Size (n)",
+              style = "font-weight: 600; color: #333; display: block; margin-bottom: 8px;"
+            ),
+            tags$input(
+              type = "range",
+              id = "sampleSize",
+              min = "20",
+              max = "500",
+              step = "10",
+              value = "100",
+              style = "width: 100%;"
+            ),
+            tags$div(
+              id = "sizeValue",
+              "100",
+              style = "text-align: center; margin-top: 5px; font-weight: 700; color: #667eea; font-size: 18px;"
+            )
+          ),
+          
+          # Noise slider
+          tags$div(
+            tags$label(
+              "🔊 Noise Level (σ)",
+              style = "font-weight: 600; color: #333; display: block; margin-bottom: 8px;"
+            ),
+            tags$input(
+              type = "range",
+              id = "noise",
+              min = "0.1",
+              max = "2",
+              step = "0.1",
+              value = "0.5",
+              style = "width: 100%;"
+            ),
+            tags$div(
+              id = "noiseValue",
+              "0.5",
+              style = "text-align: center; margin-top: 5px; font-weight: 700; color: #667eea; font-size: 18px;"
+            )
+          )
+        ),
+        
+        tags$div(
+          style = "margin-top: 20px; display: flex; gap: 10px; flex-wrap: wrap;",
+          tags$button(
+            "🎲 Regenerate Data",
+            id = "regenerate",
+            onclick = "updatePlot()",
+            style = "padding: 12px 24px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; border-radius: 8px; font-weight: 600; cursor: pointer; box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4); transition: all 0.3s;"
+          ),
+          tags$button(
+            "📈 Show Regression Stats",
+            id = "showStats",
+            onclick = "toggleStats()",
+            style = "padding: 12px 24px; background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); color: white; border: none; border-radius: 8px; font-weight: 600; cursor: pointer; box-shadow: 0 4px 15px rgba(245, 87, 108, 0.4); transition: all 0.3s;"
+          )
+        )
+      ),
+      
+      # Plot container
+      tags$div(
+        id = "plotContainer",
+        style = "background: white; padding: 20px; border-radius: 10px; box-shadow: 0 5px 20px rgba(0,0,0,0.1);"
+      ),
+      
+      # Stats container
+      tags$div(
+        id = "statsContainer",
+        style = "background: white; padding: 20px; border-radius: 10px; margin-top: 20px; display: none;",
+        tags$h4("📊 Regression Statistics", style = "color: #667eea; margin-top: 0;"),
+        tags$div(id = "statsContent")
+      )
+    ),
+    
+    # JavaScript for interactivity
+    tags$script(HTML("
+      // Initialize
+      let currentData = null;
+      
+      function generateData() {
+        const n = parseInt(document.getElementById('sampleSize').value);
+        const rho = parseFloat(document.getElementById('correlation').value);
+        const sigma = parseFloat(document.getElementById('noise').value);
+        
+        const x = [];
+        const y = [];
+        
+        // Generate random normal data
+        for (let i = 0; i < n; i++) {
+          const xi = (Math.random() + Math.random() + Math.random() + Math.random() - 2) * 1.5;
+          const noise = (Math.random() + Math.random() + Math.random() + Math.random() - 2) * sigma;
+          x.push(xi);
+          y.push(rho * xi + noise);
+        }
+        
+        return {x, y, n, rho, sigma};
+      }
+      
+      function calculateRegression(x, y) {
+        const n = x.length;
+        const sumX = x.reduce((a, b) => a + b, 0);
+        const sumY = y.reduce((a, b) => a + b, 0);
+        const sumXY = x.reduce((sum, xi, i) => sum + xi * y[i], 0);
+        const sumX2 = x.reduce((sum, xi) => sum + xi * xi, 0);
+        
+        const meanX = sumX / n;
+        const meanY = sumY / n;
+        
+        const beta1 = (sumXY - n * meanX * meanY) / (sumX2 - n * meanX * meanX);
+        const beta0 = meanY - beta1 * meanX;
+        
+        // Calculate R-squared
+        const yPred = x.map(xi => beta0 + beta1 * xi);
+        const ssRes = y.reduce((sum, yi, i) => sum + Math.pow(yi - yPred[i], 2), 0);
+        const ssTot = y.reduce((sum, yi) => sum + Math.pow(yi - meanY, 2), 0);
+        const r2 = 1 - (ssRes / ssTot);
+        
+        // Calculate correlation
+        const corrNumerator = x.reduce((sum, xi, i) => sum + (xi - meanX) * (y[i] - meanY), 0);
+        const corrDenomX = Math.sqrt(x.reduce((sum, xi) => sum + Math.pow(xi - meanX, 2), 0));
+        const corrDenomY = Math.sqrt(y.reduce((sum, yi) => sum + Math.pow(yi - meanY, 2), 0));
+        const corr = corrNumerator / (corrDenomX * corrDenomY);
+        
+        return {beta0, beta1, r2, corr, yPred};
+      }
+      
+      function updatePlot() {
+        currentData = generateData();
+        const {x, y, n, rho, sigma} = currentData;
+        const {beta0, beta1, r2, corr, yPred} = calculateRegression(x, y);
+        
+        const trace1 = {
+          x: x,
+          y: y,
+          mode: 'markers',
+          type: 'scatter',
+          name: 'Data Points',
+          marker: {
+            size: 10,
+            color: '#667eea',
+            opacity: 0.6,
+            line: {
+              color: 'white',
+              width: 2
+            }
+          },
+          hovertemplate: '<b>X:</b> %{x:.2f}<br><b>Y:</b> %{y:.2f}<extra></extra>'
+        };
+        
+        const trace2 = {
+          x: x,
+          y: yPred,
+          mode: 'lines',
+          type: 'scatter',
+          name: 'Regression Line',
+          line: {
+            color: '#f5576c',
+            width: 3
+          },
+          hovertemplate: '<b>Predicted Y:</b> %{y:.2f}<extra></extra>'
+        };
+        
+        const layout = {
+          title: {
+            text: `<b>Correlation Explorer</b><br><sub>ρ=${rho.toFixed(2)}, n=${n}, R²=${r2.toFixed(3)}</sub>`,
+            font: {size: 20}
+          },
+          xaxis: {
+            title: '<b>X Variable</b>',
+            gridcolor: '#f0f0f0',
+            zeroline: true,
+            zerolinecolor: '#999'
+          },
+          yaxis: {
+            title: '<b>Y Variable</b>',
+            gridcolor: '#f0f0f0',
+            zeroline: true,
+            zerolinecolor: '#999'
+          },
+          plot_bgcolor: '#fafafa',
+          paper_bgcolor: 'white',
+          hovermode: 'closest',
+          showlegend: true,
+          legend: {
+            x: 0.02,
+            y: 0.98,
+            bgcolor: 'rgba(255,255,255,0.9)',
+            bordercolor: '#ddd',
+            borderwidth: 1
+          }
+        };
+        
+        const config = {
+          displayModeBar: true,
+          displaylogo: false,
+          modeBarButtonsToRemove: ['lasso2d', 'select2d']
+        };
+        
+        Plotly.newPlot('plotContainer', [trace1, trace2], layout, config);
+        
+        // Update stats
+        updateStats(beta0, beta1, r2, corr, n);
+      }
+      
+      function updateStats(beta0, beta1, r2, corr, n) {
+        const statsHTML = `
+          <div style='display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px;'>
+            <div style='padding: 15px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 8px; color: white;'>
+              <div style='font-size: 12px; opacity: 0.9;'>Intercept (β₀)</div>
+              <div style='font-size: 24px; font-weight: 700;'>${beta0.toFixed(3)}</div>
+            </div>
+            <div style='padding: 15px; background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); border-radius: 8px; color: white;'>
+              <div style='font-size: 12px; opacity: 0.9;'>Slope (β₁)</div>
+              <div style='font-size: 24px; font-weight: 700;'>${beta1.toFixed(3)}</div>
+            </div>
+            <div style='padding: 15px; background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%); border-radius: 8px; color: white;'>
+              <div style='font-size: 12px; opacity: 0.9;'>R-squared</div>
+              <div style='font-size: 24px; font-weight: 700;'>${r2.toFixed(3)}</div>
+            </div>
+            <div style='padding: 15px; background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%); border-radius: 8px; color: white;'>
+              <div style='font-size: 12px; opacity: 0.9;'>Correlation</div>
+              <div style='font-size: 24px; font-weight: 700;'>${corr.toFixed(3)}</div>
+            </div>
+          </div>
+          <div style='margin-top: 20px; padding: 15px; background: #f5f5f5; border-radius: 8px; border-left: 4px solid #667eea;'>
+            <strong>Regression Equation:</strong> 
+            <code style='background: white; padding: 5px 10px; border-radius: 4px; display: inline-block; margin-top: 5px;'>
+              Y = ${beta0.toFixed(3)} + ${beta1.toFixed(3)}·X
+            </code>
+          </div>
+        `;
+        document.getElementById('statsContent').innerHTML = statsHTML;
+      }
+      
+      function toggleStats() {
+        const container = document.getElementById('statsContainer');
+        container.style.display = container.style.display === 'none' ? 'block' : 'none';
+      }
+      
+      // Event listeners
+      document.getElementById('correlation').addEventListener('input', function(e) {
+        document.getElementById('corrValue').textContent = e.target.value;
+      });
+      
+      document.getElementById('sampleSize').addEventListener('input', function(e) {
+        document.getElementById('sizeValue').textContent = e.target.value;
+      });
+      
+      document.getElementById('noise').addEventListener('input', function(e) {
+        document.getElementById('noiseValue').textContent = e.target.value;
+      });
+      
+      // Initialize plot
+      updatePlot();
+    "))
+  )
+)
+```
+
+::: {.callout-note}
+## 🎓 Learning Objectives
+- **Experiment** with correlation strength to see how it affects scatter patterns
+- **Observe** how sample size influences the precision of estimates
+- **Understand** the role of noise (random error) in obscuring relationships
+- **Compare** the actual correlation with the estimated R-squared value
+:::
+
+## Understanding Different Correlation Patterns
+
+```{r}
+#| echo: false
+#| fig-width: 10
+#| fig-height: 6
+
+library(plotly)
+
+# Generate data for different correlation scenarios
+set.seed(456)
+scenarios <- list(
+  list(name = "Strong Positive (r=0.9)", rho = 0.9, color = "#43e97b"),
+  list(name = "Moderate Positive (r=0.5)", rho = 0.5, color = "#4facfe"),
+  list(name = "No Correlation (r=0)", rho = 0, color = "#f5576c"),
+  list(name = "Moderate Negative (r=-0.5)", rho = -0.5, color = "#f093fb"),
+  list(name = "Strong Negative (r=-0.9)", rho = -0.9, color = "#764ba2")
+)
+
+fig <- plot_ly()
+
+for (scenario in scenarios) {
+  x <- rnorm(80)
+  y <- scenario$rho * x + rnorm(80, sd = 0.4)
+  
+  fig <- fig %>%
+    add_trace(
+      x = x,
+      y = y,
+      type = 'scatter',
+      mode = 'markers',
+      name = scenario$name,
+      marker = list(
+        size = 8,
+        color = scenario$color,
+        opacity = 0.6,
+        line = list(color = 'white', width = 1)
+      ),
+      hovertemplate = paste0(
+        '<b>', scenario$name, '</b><br>',
+        'X: %{x:.2f}<br>',
+        'Y: %{y:.2f}<extra></extra>'
+      )
+    )
+}
+
+fig <- fig %>%
+  layout(
+    title = list(
+      text = '<b>Comparing Different Correlation Strengths</b>',
+      font = list(size = 18)
+    ),
+    xaxis = list(title = '<b>X Variable</b>', gridcolor = '#f0f0f0'),
+    yaxis = list(title = '<b>Y Variable</b>', gridcolor = '#f0f0f0'),
+    plot_bgcolor = '#fafafa',
+    paper_bgcolor = 'white',
+    hovermode = 'closest',
+    legend = list(
+      orientation = 'h',
+      y = -0.15,
+      x = 0.5,
+      xanchor = 'center'
+    )
+  )
+
+fig
+```
+
+## Overview
+
+In this handout we will revisit the Classical Linear Regression Model (CLRM) [see @wooldridge2010, chap. 1-2]. The goal of this week's lecture is to:
+
+1. understand the model specification;
+2. its underlying assumptions;
+3. and the appropriate interpretation;
+4. the OLS estimator, using linear algebra;
+5. the geometry of OLS and partitioned regression result.
+
+## Model Specification
+
+The linear population regression model is given by,
+
+$$ 
+\begin{aligned}
+  Y_i =& X_i'\beta+\varepsilon_i \\
+  =& \beta_1\mathbf{1}+\beta_2X_{i2}+\beta_3X_{i3}+...+\beta_kX_{ik}+\varepsilon_i
+\end{aligned}
+$$
+
+# R Code Example
+
+```{r}
+#| eval: false
+
+# In R you must install the appropriate package. Having installed the package
+# you must load the library associated with that package each time you enter R.
+# I used the following libraries over Term 1:
+library(tidyverse)
+library(reshape2)
+library(foreign)
+library(ggplot2)
+library(haven)
+library(readxl)
+
+# Read the Stata dataset qlfs18.dta
+qlfs18 <- read_dta("qlfs1314_2.dta")
+
+# Converting some variable names written in capitals
+names(qlfs18)[names(qlfs18) == "EDAGE"]   <- "edage"
+names(qlfs18)[names(qlfs18) == "HOURPAY"] <- "hourpay"
+names(qlfs18)[names(qlfs18) == "AGE"]     <- "age"
+
+# Plot a histogram of hourpay (with 30 bins)
+ggplot(qlfs18, aes(x = hourpay)) +
+  geom_histogram(binwidth = 30)
+
+# Due to asymmetric distribution use ln(hourpay)
+qlfs18 <- qlfs18 %>%
+  mutate(lhourpay = log(hourpay))
+```

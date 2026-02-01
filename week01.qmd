@@ -1,0 +1,110 @@
+---
+title: "Classical Linear Regression Model & Ordinary Least Squares"
+
+format:
+  html:
+    toc: true
+    toc-depth: 3
+    number-sections: true
+    code-fold: true
+  pdf:
+    toc: true
+    number-sections: true
+    output-file: "week01.pdf"
+
+execute:
+  echo: true     # show code
+  eval: true     # run code
+  warning: true  # show warnings (change to false if you want)
+  message: true  # show messages (change to false if you want)
+  error: true    # IMPORTANT: don't stop rendering if one chunk errors
+---
+
+::: callout-note
+[Download PDF](week01.pdf)
+:::
+
+# Two variable linear regression analysis
+
+## Readings
+- Stock and Watson (2003), Chapters 4–5
+- Dougherty (2016), Chapter 2
+- Wooldridge (2013), Chapter 2
+
+# Introduction
+Econometrics means economic measurement. Econometricians attempt to quantify
+economic relationships that are of interest to theory and policy.
+
+
+# Correlation vs Regression
+
+## Correlation
+In economics we are interested in the relationship between two or more random
+variables, for example:
+- Sales and advertising expenditure
+- Personal consumption and disposable income
+- Investment and interest rates
+- Earnings and schooling
+A measure of linear association between two random variables $x$ and $y$
+is the **covariance**, which for a sample of $n$ pairs of observations
+$(x_1, y_1)$, $\ldots$, $(x_n, y_n)$ is calculated as
+
+$$
+\operatorname{cov}(x,y)
+=
+\frac{1}{n-1}
+\sum_{i=1}^{n}
+(x_i - \bar{x})(y_i - \bar{y})
+$$
+
+The covariance is a measure of **linear** association. It may be approximately
+zero even when there is a strong non-linear (e.g. quadratic) relationship.
+
+# Overview
+In this handout we will revisit the Classical Linear Regression Model (CLRM) [see @wooldridge2010, chap. 1-2]. The goal of this week's lecture is to:
+1.  understand the model specification;
+2.  it's underlying assumptions;
+3.  and the appropriate interpretation;
+4.  the OLS estimator, using linear algebra;
+5.  the geometry of OLS and partitioned regression result.
+
+# Model Specification
+The linear population regression model is given by,
+
+$$ 
+\begin{aligned}
+  Y_i =& X_i'\beta+\varepsilon_i \\
+  =& \beta_1\mathbf{1}+\beta_2X_{i2}+\beta_3X_{i3}+...+\beta_kX_{ik}+\varepsilon_i
+\end{aligned}
+$$
+```{r}
+#| echo: true
+#| eval: true
+
+1+1
+
+qlfs18 <- haven::read_dta("data/qlfs1314_2.dta")
+
+```
+
+```{r}
+#| echo: true
+#| eval: true
+#| message: false
+#| warning: false
+#| error: true
+
+library(tidyverse)
+library(haven)
+
+# Read the Stata dataset (adjust path if needed)
+qlfs18 <- read_dta("data/qlfs1314_2.dta")
+
+# Show variables so you can verify names during render
+head(names(qlfs18), 30)
+
+
+summary(qlfs18$lhourpay)
+
+```
+

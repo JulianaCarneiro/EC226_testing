@@ -1,0 +1,12 @@
+---
+title: "EC226"
+---
+
+# EC226 course website
+
+Welcome. Use the menu to access weekly lecture notes and other materials.
+
+## How to use these notes
+- The HTML pages include interactive R code you can edit and run in the browser.
+- Each week also has a downloadable PDF version.
+
