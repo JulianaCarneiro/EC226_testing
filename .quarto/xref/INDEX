@@ -1,0 +1,21 @@
+{
+  "week01.qmd": {
+    "week01.html": "2767cdb7",
+    "week01.tex": "729b3ecd"
+  },
+  "index.qmd": {
+    "index.html": "74afb257"
+  },
+  "test-interactive.qmd": {
+    "test-interactive.html": "e7286837"
+  },
+  "handout-1neil.qmd": {
+    "handout-1neil.html": "bacfe0af"
+  },
+  "week01_advanced_interactive.qmd": {
+    "week01_advanced_interactive.html": "f1131577"
+  },
+  "week01_FINAL.qmd": {
+    "week01_FINAL.html": "63b2b17f"
+  }
+}
